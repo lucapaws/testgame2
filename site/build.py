@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-"""Build the GitHub Pages site into _site/.
+"""Build the GitHub Pages site in place, at the repository root.
 
 Each game is authored as a page fragment (title, links and styles first, then the body),
 the shape the Artifact viewer expects. This wraps every fragment in a full HTML document
-and writes a hub page that links to all of them. To add a game, add one entry to GAMES.
+and writes a hub page that links to all of them. Pages serves the branch as it is, so run
+`python3 site/build.py` after changing a game and commit the result.
+To add a game, add one entry to GAMES.
 """
 import html
 import pathlib
-import shutil
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-OUT = ROOT / "_site"
+OUT = ROOT
 
 GAMES = [
     {"slug": "truth-dare", "src": "truth-dare.html", "title": "حقیقت یا جرئت",
@@ -47,7 +48,7 @@ def card(g: dict, i: int) -> str:
     tags = "".join(f"<span>{html.escape(t)}</span>" for t in g["tags"])
     return f"""
     <a class="game" href="{g['slug']}/" style="--accent:{g['accent']};--i:{i}">
-      <span class="phone"><img src="thumbs/{g['slug']}.jpg" alt="" width="360" height="779" loading="lazy"></span>
+      <span class="phone"><img src="site/thumbs/{g['slug']}.jpg" alt="" width="360" height="779" loading="lazy"></span>
       <span class="info">
         <b>{html.escape(g['title'])}</b>
         <span class="desc">{html.escape(g['desc'])}</span>
@@ -58,9 +59,6 @@ def card(g: dict, i: int) -> str:
 
 
 def main() -> None:
-    if OUT.exists():
-        shutil.rmtree(OUT)
-    OUT.mkdir()
     built = []
     for g in GAMES:
         src = ROOT / g["src"]
@@ -68,11 +66,10 @@ def main() -> None:
             print("skip (missing):", g["src"])
             continue
         d = OUT / g["slug"]
-        d.mkdir()
+        d.mkdir(exist_ok=True)
         (d / "index.html").write_text(wrap(src.read_text(encoding="utf-8"), "#15101c"), encoding="utf-8")
         built.append(g)
         print("built:", g["slug"])
-    shutil.copytree(ROOT / "site" / "thumbs", OUT / "thumbs")
     hub = (ROOT / "site" / "hub.html").read_text(encoding="utf-8")
     hub = hub.replace("<!--GAMES-->", "".join(card(g, i) for i, g in enumerate(built)))
     hub = hub.replace("<!--COUNT-->", "۰۱۲۳۴۵۶۷۸۹"[len(built)])

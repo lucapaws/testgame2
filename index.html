@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="fa">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#15101c">
+<title>بازی‌خانه</title>
+<meta name="description" content="مجموعه‌ی بازی‌های فارسی برای دورهمی و تنهایی، مستقیم در مرورگر.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lalezar&family=Vazirmatn:wght@400;600;800&display=swap">
+<style>
+/* Layout: one column of game "cabinets" on a dark felt; each card shows the real game in a phone frame. */
+:root {
+  color-scheme: dark;
+  --bg: #15101c;
+  --bg-2: #211829;
+  --ivory: #f3e7cc;
+  --ivory-lo: #e6d4ae;
+  --ivory-lip: #b39465;
+  --ink: #2a1a1a;
+  --ink-soft: #77605a;
+  --cream: #f6ead2;
+  --muted: #b9a8b2;
+  --shadow: rgba(6, 3, 10, .65);
+  --display: "Lalezar", "Vazirmatn", Tahoma, sans-serif;
+  --body: "Vazirmatn", Tahoma, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh; background: var(--bg); color: var(--cream); font-family: var(--body); direction: rtl;
+  background-image: radial-gradient(ellipse at 20% -10%, rgba(255,190,120,.16), transparent 55%), radial-gradient(ellipse at 100% 110%, rgba(95,216,210,.08), transparent 50%);
+  background-attachment: fixed;
+}
+main { max-width: 980px; margin: 0 auto; padding-inline: 16px; padding-block: calc(28px + env(safe-area-inset-top, 0px)) calc(40px + env(safe-area-inset-bottom, 0px)); }
+header { text-align: center; margin-bottom: 26px; }
+header h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(44px, 9vw, 64px); line-height: 1.3; color: var(--cream); text-shadow: 0 4px 0 rgba(0,0,0,.35); }
+header h1 span { color: #eaa632; }
+header p { margin: 4px auto 0; max-width: 36ch; color: var(--muted); font-size: 15px; line-height: 1.8; text-wrap: balance; }
+.count { display: inline-block; margin-top: 12px; padding: 4px 14px; border-radius: 999px; background: rgba(255,255,255,.06); color: var(--muted); font-size: 13px; font-weight: 600; }
+.games { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 18px; }
+.game {
+  display: flex; gap: 14px; padding: 14px; border-radius: 24px; text-decoration: none; color: var(--ink); position: relative;
+  background: linear-gradient(180deg, #fffaf0 0%, var(--ivory) 40%, var(--ivory-lo) 100%);
+  box-shadow: 0 5px 0 var(--ivory-lip), 3px 14px 26px var(--shadow);
+  transition: transform 160ms cubic-bezier(.22,.61,.36,1);
+  animation: enter 620ms cubic-bezier(.22,.61,.36,1) both; animation-delay: calc(var(--i) * 70ms);
+}
+.game::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(180deg, rgba(255,255,255,.45), rgba(255,255,255,0) 45%); }
+.game:hover { transform: translateY(-3px); }
+.game:active { transform: scale(.97) translateY(2px); }
+.game:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+.phone { flex: none; width: 112px; aspect-ratio: 360 / 779; max-width: 100%; border-radius: 18px; padding: 5px; background: #1b1420; box-shadow: 0 0 0 2px var(--accent), 0 8px 18px rgba(0,0,0,.35); position: relative; z-index: 1; }
+.phone img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 13px; }
+.info { display: flex; flex-direction: column; gap: 8px; min-width: 0; position: relative; z-index: 1; padding-block: 4px; }
+.info b { font-family: var(--display); font-weight: 400; font-size: 28px; line-height: 1.3; }
+.desc { font-size: 14px; line-height: 1.8; color: var(--ink-soft); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tags span { font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: rgba(60,30,20,.08); color: var(--ink-soft); }
+.play {
+  margin-top: auto; align-self: flex-start; height: 42px; padding-inline: 18px; border-radius: 999px; display: inline-flex; align-items: center;
+  font-family: var(--display); font-size: 19px; padding-top: 3px; color: #fff; background: var(--accent);
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,.25), 0 3px 8px rgba(0,0,0,.2); text-shadow: 0 1px 0 rgba(0,0,0,.35);
+}
+footer { margin-top: 30px; text-align: center; color: var(--muted); font-size: 13px; line-height: 1.8; }
+@keyframes enter { from { opacity: 0; transform: translateY(24px) scale(.96); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .game { animation: none; transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>بازی‌<span>خانه</span></h1>
+    <p>بازی‌های فارسی برای دورهمی و تنهایی. بدون نصب، مستقیم در مرورگر گوشی.</p>
+    <span class="count">۴ بازی</span>
+  </header>
+  <section class="games" aria-label="بازی‌ها">
+    <a class="game" href="truth-dare/" style="--accent:#eaa632;--i:0">
+      <span class="phone"><img src="site/thumbs/truth-dare.jpg" alt="" width="360" height="779" loading="lazy"></span>
+      <span class="info">
+        <b>حقیقت یا جرئت</b>
+        <span class="desc">بطری را روی فرش بچرخان؛ هر کس بطری به او رسید، حقیقت می‌گوید یا جرئت می‌کند.</span>
+        <span class="tags"><span>گروهی</span><span>۲ تا ۱۰ نفر</span></span>
+        <span class="play">بازی کن</span>
+      </span>
+    </a>
+    <a class="game" href="adabazi/" style="--accent:#dcaa45;--i:1">
+      <span class="phone"><img src="site/thumbs/adabazi.jpg" alt="" width="360" height="779" loading="lazy"></span>
+      <span class="info">
+        <b>ادابازی</b>
+        <span class="desc">پانتومیم دو گروهی روی صحنه‌ی تئاتر؛ بدون یک کلمه حرف، کارت را بازی کن.</span>
+        <span class="tags"><span>دو گروه</span><span>۴ نفر به بالا</span></span>
+        <span class="play">بازی کن</span>
+      </span>
+    </a>
+    <a class="game" href="esm-famil/" style="--accent:#2f8a5f;--i:2">
+      <span class="phone"><img src="site/thumbs/esm-famil.jpg" alt="" width="360" height="779" loading="lazy"></span>
+      <span class="info">
+        <b>اسم فامیل</b>
+        <span class="desc">حرف را بچرخان و تا تمام شدن زمان، برای هر ستون یک کلمه پیدا کن.</span>
+        <span class="tags"><span>گروهی</span><span>۲ تا ۸ نفر</span></span>
+        <span class="play">بازی کن</span>
+      </span>
+    </a>
+    <a class="game" href="dusk-garden/" style="--accent:#5fd8d2;--i:3">
+      <span class="phone"><img src="site/thumbs/dusk-garden.jpg" alt="" width="360" height="779" loading="lazy"></span>
+      <span class="info">
+        <b>باغچه‌ی غروب</b>
+        <span class="desc">کانال‌های کاغذی را بچرخان تا آب چشمه به همه‌ی گل‌ها برسد.</span>
+        <span class="tags"><span>تک‌نفره</span><span>پازل</span></span>
+        <span class="play">بازی کن</span>
+      </span>
+    </a>
+  </section>
+  <footer>برای تجربه‌ی بهتر، صفحه‌ی هر بازی را در گوشی به «صفحه‌ی اصلی» اضافه کن.</footer>
+</main>
+</body>
+</html>
