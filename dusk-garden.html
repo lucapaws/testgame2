@@ -1,0 +1,793 @@
+<title>باغچه‌ی غروب</title>
+<meta name="description" content="Dusk Garden: rotate paper channels so spring water reaches every flower.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lalezar&family=Vazirmatn:wght@400;600;800&display=swap">
+<style>
+/* Layout: one phone-width column over a painted dusk sky; paper tray board in the middle,
+   paper chips above and below. Style "Dusk Paper Garden": one key light at top-left (the moon),
+   every surface is the same cut-paper recipe (shadow → lip → face → gloss). Single dark world by choice. */
+:root {
+  color-scheme: dark;
+  --night: #1b1530;
+  --sky-top: #231a40;
+  --sky-low: #5a3366;
+  --glow: #e88d77;
+  --ink: #f6ead8;
+  --muted: #bfaecf;
+  --paper-hi: #fbf0dc;
+  --paper: #ecd9b9;
+  --paper-lip: #b3916c;
+  --paper-ink: #3b2840;
+  --hole: #d4bd98;
+  --water: #5fd8d2;
+  --gold: #ffc94a;
+  --gold-deep: #e39a1c;
+  --shadow: rgba(10, 5, 28, .55);
+  --display: "Lalezar", "Vazirmatn", "Tahoma", system-ui, sans-serif;
+  --body: "Vazirmatn", "Tahoma", system-ui, sans-serif;
+  --ease-back: cubic-bezier(.34, 1.56, .64, 1);
+  --ease-out: cubic-bezier(.22, .61, .36, 1);
+}
+html, body { height: 100%; }
+body {
+  background: var(--night); color: var(--ink); font-family: var(--body);
+  direction: rtl; overflow: hidden; -webkit-tap-highlight-color: transparent;
+  user-select: none; -webkit-user-select: none; touch-action: manipulation;
+}
+#sky, #fx { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#sky { z-index: 0; }
+#fx { z-index: 30; pointer-events: none; }
+
+.app {
+  position: relative; z-index: 1; height: 100%; max-width: 460px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: 10px;
+  padding-inline: 16px; padding-block: 14px 18px; box-sizing: border-box;
+}
+
+/* ---- the paper recipe, shared by every DOM surface ---- */
+.paper {
+  background: linear-gradient(180deg, var(--paper-hi) 0%, var(--paper) 100%);
+  color: var(--paper-ink);
+  box-shadow: 0 4px 0 var(--paper-lip), 3px 9px 14px var(--shadow);
+  position: relative;
+}
+.paper::after { /* gloss: from the top edge to 55% of the face */
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.45) 0%, rgba(255,255,255,0) 55%);
+}
+
+header.bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 40px; padding-inline: 14px;
+  border-radius: 999px; font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums;
+  white-space: nowrap; box-sizing: border-box;
+}
+.chip svg { width: 22px; height: 22px; flex: none; }
+.level { justify-self: start; font-family: var(--display); font-weight: 400; font-size: 18px; padding-top: 3px; }
+.coins { justify-self: end; }
+.bloomcount { font-size: 17px; padding-inline: 16px; }
+.bloomcount b { font-weight: 800; }
+
+.hint { transition: opacity 200ms ease-out; text-align: center; color: var(--muted); font-size: 14px; margin: 2px 0 0; text-wrap: balance; }
+.hint strong { color: var(--ink); font-weight: 600; }
+
+.boardwrap { flex: 1; min-height: 0; display: grid; place-items: center; }
+#board { display: block; border-radius: 26px; outline: none; touch-action: none; }
+
+footer.bar { display: flex; align-items: center; gap: 10px; }
+.moves { margin-inline-end: auto; }
+.moves .par { color: #7b6680; font-weight: 600; }
+.ibtn {
+  width: 48px; height: 48px; border-radius: 50%; border: 0; padding: 0; cursor: pointer;
+  display: grid; place-items: center; transition: transform 130ms var(--ease-out);
+}
+.ibtn svg { width: 24px; height: 24px; position: relative; z-index: 1; }
+.ibtn:active, .btn:active { transform: scale(.94) translateY(2px); }
+.ibtn:focus-visible, .btn:focus-visible, #board:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; }
+
+/* ---- completion sheet ---- */
+#board { transform-origin: 50% 0; }
+#sheet {
+  position: fixed; z-index: 21; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  width: min(428px, calc(100% - 32px)); transform: translate(-50%, 130%);
+  border-radius: 30px; padding: 22px 20px 20px; box-sizing: border-box;
+  box-shadow: 0 7px 0 var(--paper-lip), 4px 16px 30px var(--shadow);
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+#sheet[hidden] { display: none !important; }
+#sheet h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 32px; line-height: 1.2; color: var(--paper-ink); text-wrap: balance; }
+#sheet .sub { margin: -6px 0 0; font-size: 14px; color: #7b6680; font-variant-numeric: tabular-nums; }
+.stars { display: flex; gap: 10px; direction: ltr; align-items: flex-end; height: 74px; }
+.star { position: relative; width: 64px; height: 64px; }
+.star:nth-child(2) { width: 74px; height: 74px; }
+.star svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.star .fill { transform-origin: 50% 55%; transform: scale(0); }
+.payrow {
+  display: flex; align-items: center; gap: 8px; height: 46px; padding-inline: 18px; border-radius: 999px;
+  background: rgba(59, 40, 64, .08); box-shadow: inset 2px 3px 0 rgba(59,40,64,.12);
+  font-weight: 800; font-size: 22px; font-variant-numeric: tabular-nums; color: var(--paper-ink);
+}
+.payrow svg { width: 28px; height: 28px; }
+.actions { display: flex; gap: 10px; width: 100%; margin-top: 4px; }
+.btn {
+  flex: 1; height: 54px; border: 0; border-radius: 999px; cursor: pointer;
+  font-family: var(--display); font-size: 21px; padding-top: 3px; transition: transform 130ms var(--ease-out);
+}
+.btn.primary {
+  flex: 1.6; color: #3b1f08;
+  background: linear-gradient(180deg, #ffe08a 0%, var(--gold) 100%);
+  box-shadow: 0 4px 0 var(--gold-deep), 3px 9px 14px var(--shadow);
+}
+.btn.ghost { background: rgba(59,40,64,.08); color: var(--paper-ink); box-shadow: inset 0 -3px 0 rgba(59,40,64,.12); }
+.actions .btn { transform: scale(0); }
+
+#toast {
+  position: fixed; z-index: 25; left: 50%; bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+  transform: translate(-50%, 0); height: 40px; padding-inline: 18px; border-radius: 999px;
+  display: flex; align-items: center; font-weight: 600; font-size: 14px; white-space: nowrap;
+}
+#toast[hidden] { display: none !important; }
+
+.enter { animation: enter 620ms both; }
+@keyframes enter {
+  0% { opacity: 0; transform: translateY(28px) scale(.94); animation-timing-function: var(--ease-out); }
+  55% { opacity: 1; }
+  100% { opacity: 1; transform: none; }
+}
+.motion-off .enter { animation: none; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+
+<canvas id="sky" aria-hidden="true"></canvas>
+
+<div class="app" id="app">
+  <header class="bar enter">
+    <div class="chip paper level" id="levelChip">مرحله‌ی ۱</div>
+    <div class="chip paper bloomcount" id="bloomChip" aria-hidden="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <g transform="translate(12 12)">
+          <ellipse cx="0" cy="-6" rx="3.6" ry="5.6" fill="#ff7a6b"/><ellipse cx="0" cy="-6" rx="3.6" ry="5.6" fill="#ff7a6b" transform="rotate(72)"/>
+          <ellipse cx="0" cy="-6" rx="3.6" ry="5.6" fill="#ff7a6b" transform="rotate(144)"/><ellipse cx="0" cy="-6" rx="3.6" ry="5.6" fill="#ff7a6b" transform="rotate(216)"/>
+          <ellipse cx="0" cy="-6" rx="3.6" ry="5.6" fill="#ff7a6b" transform="rotate(288)"/><circle r="3.4" fill="#ffc94a"/>
+        </g>
+      </svg>
+      <span><b id="bloomNum">۰</b> از <span id="bloomTot">۴</span></span>
+    </div>
+    <div class="chip paper coins" id="coinChip">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12.8" r="9" fill="#e39a1c"/><circle cx="12" cy="11.2" r="9" fill="#ffc94a"/><circle cx="12" cy="11.2" r="5.4" fill="none" stroke="#e39a1c" stroke-width="1.6"/><path d="M8 7.5a6 6 0 0 1 5-2" stroke="#fff6d6" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+      <span id="coinNum">۰</span>
+    </div>
+  </header>
+  <p class="hint enter" style="animation-delay:60ms">کاشی‌ها را بچرخان تا آب چشمه به <strong>همه‌ی گل‌ها</strong> برسد.</p>
+  <div class="boardwrap"><canvas id="board" tabindex="0" role="application" aria-label="صفحه‌ی بازی؛ با کلیدهای جهت حرکت کن و با فاصله کاشی را بچرخان"></canvas></div>
+  <footer class="bar enter" style="animation-delay:120ms">
+    <div class="chip paper moves" id="movesChip">حرکت <span id="moveNum">۰</span>&nbsp;<span class="par">· هدف <span id="parNum">۰</span></span></div>
+    <button class="ibtn paper" id="btnRestart" aria-label="شروع دوباره‌ی مرحله" title="شروع دوباره">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#3b2840" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5"/><path d="M4 4.5v4h4"/></svg>
+    </button>
+    <button class="ibtn paper" id="btnSound" aria-label="صدا: روشن" title="صدا">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#3b2840" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="#3b2840"/><path id="soundWaves" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/><path id="soundX" d="M16 9.5l5 5M21 9.5l-5 5" visibility="hidden"/></svg>
+    </button>
+    <button class="ibtn paper" id="btnMotion" aria-label="حرکت: خودکار" title="حرکت">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#3b2840" stroke-width="2.2" stroke-linecap="round"><path d="M3 12c2.5-5 5.5-5 8 0s5.5 5 8 0" id="motionWave"/><path d="M3 12h18" id="motionFlat" visibility="hidden"/><circle cx="21" cy="12" r="1.4" fill="#3b2840"/></svg>
+    </button>
+  </footer>
+</div>
+
+<section id="sheet" class="paper" hidden aria-live="polite">
+  <div class="stars" id="stars"></div>
+  <h2>باغ سیراب شد!</h2>
+  <p class="sub" id="sheetSub">در ۰ حرکت · هدف ۰</p>
+  <div class="payrow" id="payrow">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12.8" r="9" fill="#e39a1c"/><circle cx="12" cy="11.2" r="9" fill="#ffc94a"/><circle cx="12" cy="11.2" r="5.4" fill="none" stroke="#e39a1c" stroke-width="1.6"/></svg>
+    <span id="payNum">+۰</span>
+  </div>
+  <div class="actions">
+    <button class="btn primary" id="btnNext">مرحله‌ی بعد</button>
+    <button class="btn ghost" id="btnReplay">دوباره</button>
+  </div>
+</section>
+<div id="toast" class="paper" hidden></div>
+<div class="sr" id="live" aria-live="polite"></div>
+<canvas id="fx" aria-hidden="true"></canvas>
+
+<script>
+(() => {
+"use strict";
+// ---------- utilities ----------
+const fa = v => String(v).replace(/\d/g, d => "۰۱۲۳۴۵۶۷۸۹"[d]);
+const clamp01 = t => t < 0 ? 0 : t > 1 ? 1 : t;
+const eOC = t => 1 - Math.pow(1 - t, 3);
+const eIC = t => t * t * t;
+const eOB = t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+const eIQ = t => t * t;
+const tw = (from, to, t0, dur, ease) => ({ from, to, t0, dur, ease });
+const tv = (o, now) => { if (o.dur <= 0) return o.to; const p = clamp01((now - o.t0) / o.dur); return o.from + (o.to - o.from) * o.ease(p); };
+const tdone = (o, now) => o.dur <= 0 || now >= o.t0 + o.dur;
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const $ = id => document.getElementById(id);
+const store = {
+  get() { try { return JSON.parse(localStorage.getItem("dusk-garden") || "null"); } catch (e) { return null; } },
+  set(v) { try { localStorage.setItem("dusk-garden", JSON.stringify(v)); } catch (e) {} }
+};
+
+// ---------- motion setting: Auto / On / Off ----------
+const mq = matchMedia("(prefers-reduced-motion: reduce)");
+let motionMode = "auto";
+const reduce = () => motionMode === "off" || (motionMode === "auto" && mq.matches);
+
+// ---------- model ----------
+const W = 5, H = 6;
+const DIRS = [[0, -1, 1, 4], [1, 0, 2, 8], [0, 1, 4, 1], [-1, 0, 8, 2]]; // dx, dy, bit, opposite
+const rotm = (m, k) => { k = ((k % 4) + 4) % 4; for (let i = 0; i < k; i++) m = ((m << 1) | (m >> 3)) & 15; return m; };
+const FLOWER_COLORS = [["#ff7a6b", "#ffb0a2"], ["#ffb547", "#ffe0a0"], ["#b48cff", "#dccbff"], ["#ff8fb8", "#ffd0e2"]];
+
+let level = 1, coins = 0, pendingCoins = 0;
+let tiles = [], src = null, flowers = [], par = 0, moves = 0;
+let won = false, showPending = false, showing = false, settledShow = false;
+let shownBlooms = 0, run = 0, lastInput = performance.now();
+
+function generate(lv) {
+  const rnd = mulberry32(lv * 9973 + 17);
+  const idx = (x, y) => y * W + x;
+  const sol = new Array(W * H).fill(0), inT = new Array(W * H).fill(false);
+  const s = { x: 2, y: 2 + Math.floor(rnd() * 2) };
+  inT[idx(s.x, s.y)] = true;
+  const front = [];
+  const addF = (x, y) => DIRS.forEach(([dx, dy, b, o]) => { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < W && ny < H) front.push([x, y, nx, ny, b, o]); });
+  addF(s.x, s.y);
+  while (front.length) {
+    const [x, y, nx, ny, b, o] = front.splice(Math.floor(rnd() * front.length), 1)[0];
+    if (inT[idx(nx, ny)]) continue;
+    inT[idx(nx, ny)] = true; sol[idx(x, y)] |= b; sol[idx(nx, ny)] |= o; addF(nx, ny);
+  }
+  // depth along the solution tree
+  const depth = new Array(W * H).fill(-1); depth[idx(s.x, s.y)] = 0;
+  const q = [[s.x, s.y]];
+  while (q.length) { const [x, y] = q.shift(); DIRS.forEach(([dx, dy, b]) => { if (sol[idx(x, y)] & b) { const n = idx(x + dx, y + dy); if (depth[n] < 0) { depth[n] = depth[idx(x, y)] + 1; q.push([x + dx, y + dy]); } } }); }
+  // flowers: the farthest leaves, spread apart
+  const leaves = [];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const m = sol[idx(x, y)]; if (!(x === s.x && y === s.y) && (m & (m - 1)) === 0) leaves.push({ x, y, d: depth[idx(x, y)] }); }
+  leaves.sort((a, b) => b.d - a.d || a.y - b.y || a.x - b.x);
+  const picked = [];
+  for (const minGap of [3, 2, 1]) { for (const l of leaves) { if (picked.length >= 4) break; if (picked.includes(l)) continue; if (picked.every(p => Math.abs(p.x - l.x) + Math.abs(p.y - l.y) >= minGap)) picked.push(l); } }
+  let out;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    out = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = idx(x, y), r = Math.floor(rnd() * 4), base = rotm(sol[i], r);
+      const fi = picked.findIndex(p => p.x === x && p.y === y);
+      out.push({ x, y, sol: sol[i], base, turns: 0, ang: 0, vel: 0, depthSol: depth[i], isSrc: x === s.x && y === s.y,
+        flower: fi < 0 ? null : { color: FLOWER_COLORS[fi % 4], b: tw(0, 0, 0, 0, eOC), bloomed: false, counted: false, flight: null, phase: fi * 1.7 },
+        w: tw(0, 0, 0, 0, eOC), wet: false, depth: -1, press: tw(1, 1, 0, 0, eOC), appear: tw(1, 1, 0, 0, eOC) });
+    }
+    const t0 = out; tiles = t0; src = tiles.find(t => t.isSrc);
+    if (!computeWater().allFlowers) break;
+  }
+  tiles = out; src = tiles.find(t => t.isSrc); flowers = tiles.filter(t => t.flower);
+  par = tiles.reduce((acc, t) => { for (let k = 0; k < 4; k++) if (rotm(t.base, k) === t.sol) return acc + k; return acc; }, 0);
+}
+const cur = t => rotm(t.base, t.turns);
+const tileAt = (x, y) => (x >= 0 && y >= 0 && x < W && y < H) ? tiles[y * W + x] : null;
+
+function computeWater() {
+  tiles.forEach(t => t.depthNew = -1);
+  src.depthNew = 0; const q = [src];
+  while (q.length) {
+    const t = q.shift(), m = cur(t);
+    DIRS.forEach(([dx, dy, b, o]) => { const n = tileAt(t.x + dx, t.y + dy); if (n && (m & b) && (cur(n) & o) && n.depthNew < 0) { n.depthNew = t.depthNew + 1; q.push(n); } });
+  }
+  return { allFlowers: tiles.filter(t => t.flower).every(t => t.depthNew >= 0) };
+}
+
+// ---------- sound ----------
+let soundOn = true, actx = null;
+function ac() { if (!soundOn) return null; if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } } if (actx.state === "suspended") actx.resume(); return actx; }
+function tone(freq, dur, gain, type = "sine", when = 0, bend = 1) {
+  const a = ac(); if (!a) return;
+  const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain(), f = a.createBiquadFilter();
+  o.type = type; o.frequency.setValueAtTime(freq, t); if (bend !== 1) o.frequency.exponentialRampToValueAtTime(freq * bend, t + dur);
+  f.type = "lowpass"; f.frequency.value = 3200;
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(f); f.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21];
+const sfx = {
+  turn() { tone(330, 0.07, 0.05, "triangle", 0, 0.7); },
+  bloom(step) { const f = 523.25 * Math.pow(2, PENTA[Math.min(step, PENTA.length - 1)] / 12); tone(f, 0.55, 0.07); tone(f * 2, 0.3, 0.02, "triangle"); },
+  land() { tone(1318, 0.12, 0.03, "sine"); },
+  wilt() { tone(260, 0.18, 0.04, "sine", 0, 0.75); },
+  star(i) { const f = [784, 988, 1175][i]; tone(f, 0.9, 0.06); tone(f * 1.5, 0.6, 0.02, "triangle"); },
+  tick() { tone(1568, 0.04, 0.015, "square"); },
+  coin() { tone(1760, 0.18, 0.04); tone(2637, 0.22, 0.025, "triangle", 0.05); }
+};
+
+// ---------- canvases ----------
+const sky = $("sky"), skx = sky.getContext("2d");
+const board = $("board"), bx = board.getContext("2d");
+const fx = $("fx"), fxx = fx.getContext("2d");
+let DPR = 1, cell = 60, pad = 12, vw = 0, vh = 0;
+function layout() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2.5);
+  vw = innerWidth; vh = innerHeight;
+  [sky, fx].forEach(c => { c.width = Math.round(vw * DPR); c.height = Math.round(vh * DPR); });
+  const wrap = board.parentElement, aw = wrap.clientWidth, ah = wrap.clientHeight;
+  cell = Math.floor(Math.min((aw - 4) / (W + 0.4), (ah - 4) / (H + 0.4), 86));
+  pad = Math.round(cell * 0.2);
+  const cw = cell * W + pad * 2, ch = cell * H + pad * 2;
+  board.style.width = cw + "px"; board.style.height = ch + "px";
+  board.width = Math.round(cw * DPR); board.height = Math.round(ch * DPR);
+  paintSkyStatic();
+}
+
+// static sky layer (moon = the key light, top-left)
+let skyStatic = null;
+function paintSkyStatic() {
+  skyStatic = document.createElement("canvas"); skyStatic.width = sky.width; skyStatic.height = sky.height;
+  const c = skyStatic.getContext("2d"); c.scale(DPR, DPR);
+  const g = c.createLinearGradient(0, 0, 0, vh);
+  g.addColorStop(0, "#1b1530"); g.addColorStop(0.45, "#2a1d48"); g.addColorStop(0.78, "#5a3366"); g.addColorStop(1, "#a0566a");
+  c.fillStyle = g; c.fillRect(0, 0, vw, vh);
+  const mx = vw * 0.2, my = vh * 0.2, mr = Math.min(vw, vh) * 0.055;
+  const halo = c.createRadialGradient(mx, my, mr * 0.5, mx, my, mr * 7);
+  halo.addColorStop(0, "rgba(255,226,190,.28)"); halo.addColorStop(1, "rgba(255,226,190,0)");
+  c.fillStyle = halo; c.fillRect(0, 0, vw, vh);
+  c.fillStyle = "#fff1d8"; c.beginPath(); c.arc(mx, my, mr, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "rgba(220,190,160,.35)"; c.beginPath(); c.arc(mx + mr * .3, my + mr * .15, mr * .22, 0, 7); c.fill(); c.beginPath(); c.arc(mx - mr * .35, my - mr * .3, mr * .13, 0, 7); c.fill();
+  const r = mulberry32(7);
+  for (let i = 0; i < 70; i++) { const x = r() * vw, y = r() * vh * 0.55, s = r() * 1.3 + 0.3; c.fillStyle = `rgba(255,240,220,${0.25 + r() * 0.5})`; c.beginPath(); c.arc(x, y, s, 0, 7); c.fill(); }
+  // paper hills: same recipe, a lip edge catching the moon on the upper-left
+  const hill = (base, amp, col, lip, seed) => {
+    const rr = mulberry32(seed); const pts = []; const n = 7;
+    for (let i = 0; i <= n; i++) pts.push([vw * i / n, vh * base - rr() * vh * amp]);
+    c.beginPath(); c.moveTo(0, vh); c.lineTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i <= n; i++) { const [px, py] = pts[i - 1], [x, y] = pts[i]; c.quadraticCurveTo(px + (x - px) * .5, Math.min(py, y) - vh * .02, x, y); }
+    c.lineTo(vw, vh); c.closePath();
+    c.save(); c.shadowColor = "rgba(8,4,24,.5)"; c.shadowBlur = 18; c.shadowOffsetX = 3; c.shadowOffsetY = -2; c.fillStyle = col; c.fill(); c.restore();
+    c.save(); c.clip(); c.strokeStyle = lip; c.lineWidth = 3; c.translate(-1, 1.5);
+    c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i <= n; i++) { const [px, py] = pts[i - 1], [x, y] = pts[i]; c.quadraticCurveTo(px + (x - px) * .5, Math.min(py, y) - vh * .02, x, y); } c.stroke(); c.restore();
+  };
+  hill(0.8, 0.08, "#3a2551", "rgba(255,190,170,.35)", 3);
+  hill(0.9, 0.07, "#2a1b40", "rgba(255,190,170,.25)", 11);
+}
+
+// ---------- fireflies (ambient, deterministic) ----------
+const FLIES = Array.from({ length: 18 }, (_, i) => { const r = mulberry32(100 + i); return { x: r(), y: 0.15 + r() * 0.8, ax: 0.02 + r() * 0.05, ay: 0.015 + r() * 0.04, px: 9 + r() * 9, py: 7 + r() * 8, ph: r() * 6.28, blink: 2.6 + r() * 3.5 }; });
+function drawSky(now) {
+  skx.setTransform(1, 0, 0, 1, 0, 0); skx.drawImage(skyStatic, 0, 0);
+  if (reduce()) return;
+  skx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const t = now / 1000;
+  for (const f of FLIES) {
+    const x = (f.x + Math.sin(t / f.px * 6.28 + f.ph) * f.ax) * vw, y = (f.y + Math.cos(t / f.py * 6.28 + f.ph) * f.ay) * vh;
+    const b = Math.pow(Math.max(0, Math.sin(t / f.blink * 6.28 + f.ph)), 3);
+    if (b < 0.02) continue;
+    const g = skx.createRadialGradient(x, y, 0, x, y, 10);
+    g.addColorStop(0, `rgba(255,236,150,${0.55 * b})`); g.addColorStop(1, "rgba(255,236,150,0)");
+    skx.fillStyle = g; skx.beginPath(); skx.arc(x, y, 10, 0, 7); skx.fill();
+    skx.fillStyle = `rgba(255,250,215,${0.9 * b})`; skx.beginPath(); skx.arc(x, y, 1.4, 0, 7); skx.fill();
+  }
+}
+
+// ---------- board drawing ----------
+function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function pipePath(c, m, r) { c.beginPath(); DIRS.forEach(([dx, dy, b]) => { if (m & b) { c.moveTo(0, 0); c.lineTo(dx * r, dy * r); } }); }
+function surface(c, x, y, w, h, rad, lip, top, bottom, lipCol) { // the one paper recipe
+  c.save(); c.shadowColor = "rgba(10,5,28,.5)"; c.shadowBlur = Math.max(6, w * 0.12); c.shadowOffsetX = 2; c.shadowOffsetY = lip + 3;
+  c.fillStyle = lipCol; rr(c, x, y + lip, w, h, rad); c.fill(); c.restore();
+  const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, top); g.addColorStop(1, bottom);
+  c.fillStyle = g; rr(c, x, y, w, h, rad); c.fill();
+  c.save(); rr(c, x, y, w, h, rad); c.clip();
+  const gl = c.createLinearGradient(0, y, 0, y + h * 0.55); gl.addColorStop(0, "rgba(255,255,255,.42)"); gl.addColorStop(1, "rgba(255,255,255,0)");
+  c.fillStyle = gl; c.fillRect(x, y, w, h * 0.55); c.restore();
+}
+let focusIdx = -1, kbd = false, nudge = null, showT0 = 0, maxDepth = 1;
+
+function drawBoard(now) {
+  const c = bx; c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const cw = cell * W + pad * 2, ch = cell * H + pad * 2;
+  c.clearRect(0, 0, cw, ch);
+  // tray: a recessed bed of darker paper
+  const tg = c.createLinearGradient(0, 0, 0, ch); tg.addColorStop(0, "#2e2147"); tg.addColorStop(1, "#3a2952");
+  c.fillStyle = tg; rr(c, 0, 0, cw, ch, Math.min(26, cell * .34)); c.fill();
+  c.save(); rr(c, 0, 0, cw, ch, Math.min(26, cell * .34)); c.clip();
+  c.strokeStyle = "rgba(6,3,20,.55)"; c.lineWidth = 10; c.filter = "blur(5px)"; rr(c, 3, 4, cw, ch, 26); c.stroke(); c.filter = "none";
+  c.restore();
+  c.strokeStyle = "rgba(255,210,190,.14)"; c.lineWidth = 1.5; rr(c, 0.75, 0.75, cw - 1.5, ch - 1.5, Math.min(26, cell * .34)); c.stroke();
+
+  const half = cell * 0.44, R = half * 2, rad = R * 0.22, lip = Math.max(3, cell * 0.06);
+  const shineHead = showing || settledShow ? (now - showT0) / 700 * (maxDepth + 3) : -99;
+  // pass 1: tile bodies (light never rotates)
+  for (const t of tiles) {
+    const sc = tv(t.appear, now) * tv(t.press, now) * (nudge === t && !reduce() ? 1 + 0.035 * Math.pow(Math.max(0, Math.sin((now - lastInput) / 1600 * Math.PI * 2)), 2) : 1);
+    if (sc <= 0.01) continue;
+    const cx = pad + cell * (t.x + 0.5), cy = pad + cell * (t.y + 0.5) - lip * 0.5;
+    c.save(); c.translate(cx, cy); c.scale(sc, sc);
+    surface(c, -half, -half, R, R, rad, lip, "#fcf2df", "#e8d3b0", "#b3916c");
+    const a = t.ang * Math.PI / 2, m = t.base;
+    // groove: bottom-right wall catches the light, so the highlight sits offset toward it
+    c.lineCap = "round";
+    c.save(); c.translate(1, 1.6); c.rotate(a); pipePath(c, m, half); c.strokeStyle = "rgba(255,250,236,.9)"; c.lineWidth = cell * 0.27; c.stroke(); c.restore();
+    c.save(); c.rotate(a); pipePath(c, m, half); c.strokeStyle = "#a88a66"; c.lineWidth = cell * 0.27; c.stroke(); c.restore();
+    c.save(); c.translate(0.8, 1.2); c.rotate(a); pipePath(c, m, half); c.strokeStyle = "#c9ad86"; c.lineWidth = cell * 0.22; c.stroke(); c.restore();
+    // water
+    const w = tv(t.w, now);
+    if (w > 0.01) {
+      const shine = Math.max(0, 1 - Math.abs(shineHead - t.depth) / 1.6);
+      c.save(); c.rotate(a); pipePath(c, m, half);
+      c.strokeStyle = "#2f9fb3"; c.lineWidth = cell * 0.19 * (0.35 + 0.65 * w); c.globalAlpha = Math.min(1, w * 1.4); c.stroke();
+      c.strokeStyle = shine > 0 ? `rgb(${95 + 140 * shine},${216 + 39 * shine},${210 + 45 * shine})` : "#5fd8d2"; c.lineWidth = cell * 0.13 * (0.35 + 0.65 * w); c.stroke();
+      if (!reduce()) { c.setLineDash([cell * 0.05, cell * 0.2]); c.lineDashOffset = -now * 0.03; c.strokeStyle = "rgba(225,255,250,.75)"; c.lineWidth = cell * 0.035; c.stroke(); c.setLineDash([]); }
+      c.restore();
+    }
+    // dead-end cap
+    if (!t.isSrc && !t.flower && (m & (m - 1)) === 0) {
+      c.fillStyle = "#9c7f5c"; c.beginPath(); c.arc(0.5, 0.8, cell * 0.075, 0, 7); c.fill();
+      c.fillStyle = w > 0.5 ? "#5fd8d2" : "#7d6448"; c.beginPath(); c.arc(0, 0, cell * 0.055, 0, 7); c.fill();
+    }
+    if (t.isSrc) drawSpring(c, now);
+    if (t.flower) drawFlower(c, t, now);
+    if (nudge === t) { c.strokeStyle = "rgba(255,201,74,.85)"; c.lineWidth = 3; rr(c, -half - 4, -half - 4, R + 8, R + 8, rad + 4); c.stroke(); }
+    if (kbd && focusIdx === tiles.indexOf(t) && document.activeElement === board) { c.strokeStyle = "#ffc94a"; c.lineWidth = 3.5; rr(c, -half - 5, -half - 5, R + 10, R + 10 + lip, rad + 5); c.stroke(); }
+    c.restore();
+  }
+}
+function drawSpring(c, now) {
+  const r = cell * 0.2;
+  c.fillStyle = "#4b3a66"; c.beginPath(); c.arc(1.5, 3, r, 0, 7); c.fill();
+  const g = c.createLinearGradient(0, -r, 0, r); g.addColorStop(0, "#a593c2"); g.addColorStop(1, "#6d5a8e");
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, r, 0, 7); c.fill();
+  const wg = c.createRadialGradient(-r * .3, -r * .3, 1, 0, 0, r * .75); wg.addColorStop(0, "#b8fff6"); wg.addColorStop(1, "#2aa3b5");
+  c.fillStyle = wg; c.beginPath(); c.arc(0, 0, r * 0.72, 0, 7); c.fill();
+  if (!reduce()) for (let k = 0; k < 2; k++) {
+    const p = ((now / 2400) + k / 2) % 1;
+    c.strokeStyle = `rgba(230,255,252,${(1 - p) * 0.7})`; c.lineWidth = 1.5; c.beginPath(); c.arc(0, 0, r * 0.72 * (0.25 + 0.7 * p), 0, 7); c.stroke();
+  }
+  c.fillStyle = "rgba(255,255,255,.7)"; c.beginPath(); c.ellipse(-r * .32, -r * .58, r * .22, r * .09, -0.5, 0, 7); c.fill();
+}
+function drawFlower(c, t, now) {
+  const f = t.flower, b = Math.max(0, tv(f.b, now)), s = cell * 1.3;
+  // socket: the goal reads before it blooms
+  c.fillStyle = "rgba(90,60,40,.28)"; c.beginPath(); c.arc(0, 0, cell * 0.26, 0, 7); c.fill();
+  c.strokeStyle = "rgba(255,250,236,.8)"; c.lineWidth = 1.5; c.beginPath(); c.arc(0.6, 1, cell * 0.26, 0.2, Math.PI * 0.8); c.stroke();
+  const sway = reduce() ? 0 : Math.sin(now / 3200 * Math.PI * 2 + f.phase) * 0.05 * clamp01(b);
+  // leaves
+  c.save(); c.rotate(sway * 0.5);
+  [[-0.9, "#3f7a55"], [0.9, "#5c9a6a"]].forEach(([ang, col]) => {
+    c.save(); c.rotate(ang + Math.PI); c.fillStyle = col; c.beginPath(); c.ellipse(0, -s * 0.15, s * 0.07, s * 0.15, 0, 0, 7); c.fill();
+    c.strokeStyle = "rgba(255,255,255,.25)"; c.lineWidth = 1; c.beginPath(); c.moveTo(0, -s * 0.04); c.lineTo(0, -s * 0.26); c.stroke(); c.restore();
+  });
+  c.restore();
+  c.save(); c.rotate(sway);
+  // bud closes as the flower opens
+  const bud = clamp01(1 - b * 1.8);
+  if (bud > 0) {
+    c.save(); c.scale(bud, bud);
+    c.fillStyle = "rgba(10,5,28,.25)"; c.beginPath(); c.ellipse(2, 3, s * .09, s * .13, 0, 0, 7); c.fill();
+    c.fillStyle = "#4f8a5e"; c.beginPath(); c.moveTo(0, -s * .17); c.quadraticCurveTo(s * .12, -s * .02, 0, s * .1); c.quadraticCurveTo(-s * .12, -s * .02, 0, -s * .17); c.fill();
+    c.fillStyle = f.color[0]; c.beginPath(); c.moveTo(0, -s * .17); c.quadraticCurveTo(s * .06, -s * .1, 0, -s * .05); c.quadraticCurveTo(-s * .06, -s * .1, 0, -s * .17); c.fill();
+    c.restore();
+  }
+  if (b > 0.02) {
+    const pl = s * 0.15 * b, pw = s * 0.082 * Math.min(1, b);
+    c.fillStyle = "rgba(10,5,28,.28)";
+    for (let i = 0; i < 6; i++) { c.save(); c.translate(1.5, 2.5); c.rotate(i * Math.PI / 3 + 0.25); c.beginPath(); c.ellipse(0, -pl * 0.9, pw, pl, 0, 0, 7); c.fill(); c.restore(); }
+    for (let i = 0; i < 6; i++) {
+      c.save(); c.rotate(i * Math.PI / 3 + 0.25);
+      const g = c.createLinearGradient(0, -pl * 1.9, 0, 0); g.addColorStop(0, f.color[1]); g.addColorStop(1, f.color[0]);
+      c.fillStyle = g; c.beginPath(); c.ellipse(0, -pl * 0.9, pw, pl, 0, 0, 7); c.fill(); c.restore();
+    }
+    const cr = s * 0.065 * Math.min(1.15, b);
+    const cg = c.createRadialGradient(-cr * .4, -cr * .4, 1, 0, 0, cr); cg.addColorStop(0, "#fff0b0"); cg.addColorStop(1, "#f0a420");
+    c.fillStyle = cg; c.beginPath(); c.arc(0, 0, cr, 0, 7); c.fill();
+  }
+  c.restore();
+}
+
+// ---------- FX: particles and flights ----------
+let parts = [], flights = [];
+function burst(x, y, color, n, spread) {
+  if (reduce()) return;
+  const r = mulberry32(Math.floor(x * 31 + y * 17 + n));
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + r() * 0.4, sp = spread * (0.6 + r() * 0.6);
+    parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t0: performance.now(), life: 420 + r() * 200, size: 3 + r() * 3, color });
+  }
+}
+function fly(kind, from, toEl, color, onLand) {
+  const f = { kind, from, toEl, color, onLand, t0: performance.now(), dur: 560, done: false };
+  if (reduce()) { f.done = true; onLand(); return f; }
+  flights.push(f); return f;
+}
+function elCenter(el) { const r = el.getBoundingClientRect(); return { x: r.left + r.width * 0.5, y: r.top + r.height * 0.5, el }; }
+function drawStar4(c, x, y, s) { c.beginPath(); c.moveTo(x, y - s); c.quadraticCurveTo(x, y, x + s, y); c.quadraticCurveTo(x, y, x, y + s); c.quadraticCurveTo(x, y, x - s, y); c.quadraticCurveTo(x, y, x, y - s); c.fill(); }
+function drawFx(now) {
+  const c = fxx; c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, vw, vh);
+  parts = parts.filter(p => now - p.t0 < p.life);
+  for (const p of parts) {
+    const t = (now - p.t0) / p.life, e = eOC(t);
+    c.globalAlpha = 1 - eIQ(t); c.fillStyle = p.color;
+    drawStar4(c, p.x + p.vx * e, p.y + p.vy * e + 10 * t * t, p.size * (1 - t * 0.5));
+  }
+  c.globalAlpha = 1;
+  for (const f of flights) {
+    if (f.done) continue;
+    const t = clamp01((now - f.t0) / f.dur), to = elCenter(f.toEl.querySelector("svg") || f.toEl);
+    const u = eIC(t) * 0.6 + t * 0.4; // accelerates into the slot
+    const dx = to.x - f.from.x, dy = to.y - f.from.y, dist = Math.hypot(dx, dy);
+    const side = f.from.x < vw / 2 ? -1 : 1;
+    const x = f.from.x + dx * u + side * Math.sin(Math.PI * u) * dist * 0.12;
+    const y = f.from.y + dy * u - Math.sin(Math.PI * u) * dist * 0.25;
+    const sc = t < 0.22 ? 0.45 + (1.5 - 0.45) * eOC(t / 0.22) : 1.5 - 0.5 * eIQ((t - 0.22) / 0.78);
+    c.save(); c.translate(x, y); c.scale(sc, sc);
+    if (f.kind === "petal") {
+      c.shadowColor = f.color; c.shadowBlur = 12;
+      for (let i = 0; i < 5; i++) { c.save(); c.rotate(i * Math.PI * 0.4 + now / 300); c.fillStyle = f.color; c.beginPath(); c.ellipse(0, -6, 3.6, 6, 0, 0, 7); c.fill(); c.restore(); }
+      c.fillStyle = "#ffc94a"; c.beginPath(); c.arc(0, 0, 3.4, 0, 7); c.fill();
+    } else {
+      c.fillStyle = "#e39a1c"; c.beginPath(); c.arc(0, 2, 10, 0, 7); c.fill();
+      c.fillStyle = "#ffc94a"; c.beginPath(); c.arc(0, 0, 10, 0, 7); c.fill();
+      c.strokeStyle = "#e39a1c"; c.lineWidth = 1.8; c.beginPath(); c.arc(0, 0, 6, 0, 7); c.stroke();
+    }
+    c.restore();
+    if (t >= 1) { f.done = true; f.onLand(); }
+  }
+  flights = flights.filter(f => !f.done);
+}
+function pop(el, k = 1.25) { if (reduce()) return; el.animate([{ transform: `scale(${k})` }, { transform: "scale(1)" }], { duration: 240, easing: "cubic-bezier(.34,1.56,.64,1)" }); }
+
+// ---------- readouts ----------
+const bloomNum = $("bloomNum"), coinNum = $("coinNum"), moveNum = $("moveNum"), live = $("live");
+function renderBlooms() { bloomNum.textContent = fa(shownBlooms); }
+function renderCoins() { coinNum.textContent = fa(coins - pendingCoins); }
+function renderMoves() { moveNum.textContent = fa(moves); $("parNum").textContent = fa(par); }
+
+// ---------- water + flowers update ----------
+function applyWater(now, causeDepth) {
+  computeWater();
+  const r = reduce();
+  let minNew = Infinity;
+  for (const t of tiles) if (t.depthNew >= 0 && !t.wet) minNew = Math.min(minNew, t.depthNew);
+  for (const t of tiles) {
+    const wasWet = t.wet, nowWet = t.depthNew >= 0;
+    t.depth = t.depthNew;
+    if (nowWet && !wasWet) {
+      const delay = 150 + (t.depthNew - minNew) * 70; // the water travels outward, after the turn lands
+      t.w = tw(tv(t.w, now), 1, now + (r ? 0 : delay), r ? 0 : 160, eOC);
+    } else if (!nowWet && wasWet) {
+      t.w = tw(tv(t.w, now), 0, now + (r ? 0 : 40), r ? 0 : 90, eIC); // retract faster than growth
+    }
+    t.wet = nowWet;
+  }
+  maxDepth = Math.max(1, ...tiles.map(t => t.depth));
+}
+function updateFlowers(now) {
+  const r = reduce();
+  for (const t of flowers) {
+    const f = t.flower;
+    if (t.wet && !f.bloomed && tv(t.w, now) >= 0.95) {
+      f.bloomed = true; run++;
+      f.b = tw(tv(f.b, now), 1, now, r ? 0 : 560, eOB);
+      sfx.bloom(run - 1);
+      const p = tileScreen(t);
+      burst(p.x, p.y, f.color[1], Math.min(8 + run * 2, 16), cell * (0.55 + run * 0.06));
+      const go = () => {
+        f.flight = fly("petal", p, $("bloomChip"), f.color[0], () => {
+          f.flight = null; f.counted = true; shownBlooms++; renderBlooms(); pop($("bloomChip"), 1.18); sfx.land();
+          live.textContent = `گل‌ها: ${fa(shownBlooms)} از ${fa(flowers.length)}`;
+        });
+      };
+      if (r) go(); else f.pending = setTimeout(go, 180);
+    } else if (!t.wet && f.bloomed) {
+      f.bloomed = false; run = 0; sfx.wilt();
+      f.b = tw(tv(f.b, now), 0, now, r ? 0 : 200, eIC);
+      clearTimeout(f.pending);
+      if (f.flight) { f.flight.done = true; f.flight = null; }
+      if (f.counted) { f.counted = false; shownBlooms--; renderBlooms(); } // losses change at once
+    }
+  }
+  if (showPending && shownBlooms === flowers.length && flights.length === 0) { showPending = false; startShow(now); }
+}
+function tileScreen(t) {
+  const r = board.getBoundingClientRect(), s = r.width / (cell * W + pad * 2);
+  return { x: r.left + (pad + cell * (t.x + 0.5)) * s, y: r.top + (pad + cell * (t.y + 0.5)) * s };
+}
+
+// ---------- input ----------
+let downTile = null;
+function cellFromEvent(e) {
+  const r = board.getBoundingClientRect(), s = (cell * W + pad * 2) / r.width;
+  const x = Math.floor(((e.clientX - r.left) * s - pad) / cell), y = Math.floor(((e.clientY - r.top) * s - pad) / cell);
+  return tileAt(x, y);
+}
+function pressDown(t, now) { t.press = tw(tv(t.press, now), 0.94, now, reduce() ? 0 : 130, eOC); }
+function pressUp(t, now) { t.press = tw(tv(t.press, now), 1, now, reduce() ? 0 : 210, eOB); }
+function rotate(t) {
+  const now = performance.now();
+  lastInput = now; nudge = null;
+  if (won) return;
+  t.turns++; moves++; renderMoves(); pop($("movesChip"), 1.08);
+  sfx.turn();
+  applyWater(now);
+  if (computeWater().allFlowers) { won = true; showPending = true; }
+}
+board.addEventListener("pointerdown", e => {
+  ac(); kbd = false; lastInput = performance.now();
+  if (showing) return;
+  const t = cellFromEvent(e); if (!t) return;
+  downTile = t; pressDown(t, performance.now()); board.setPointerCapture(e.pointerId);
+});
+board.addEventListener("pointerup", e => {
+  if (!downTile) return;
+  const t = downTile; downTile = null; pressUp(t, performance.now());
+  if (cellFromEvent(e) === t) rotate(t);
+});
+board.addEventListener("pointercancel", () => { if (downTile) pressUp(downTile, performance.now()); downTile = null; });
+board.addEventListener("focus", () => { if (focusIdx < 0) focusIdx = tiles.indexOf(src); });
+board.addEventListener("keydown", e => {
+  const k = e.key; let x = focusIdx % W, y = Math.floor(focusIdx / W);
+  if (k === "ArrowLeft") x = Math.max(0, x - 1); else if (k === "ArrowRight") x = Math.min(W - 1, x + 1);
+  else if (k === "ArrowUp") y = Math.max(0, y - 1); else if (k === "ArrowDown") y = Math.min(H - 1, y + 1);
+  else if (k === " " || k === "Enter") { e.preventDefault(); ac(); kbd = true; const t = tiles[focusIdx]; pressDown(t, performance.now()); setTimeout(() => pressUp(t, performance.now()), 130); rotate(t); return; }
+  else return;
+  e.preventDefault(); kbd = true; focusIdx = y * W + x; lastInput = performance.now();
+});
+
+// ---------- completion show: achievement → payment → exits ----------
+const sheet = $("sheet"), starsEl = $("stars");
+let liftT = "none";
+function computeLift() { // lift the garden clear of the sheet so the payoff stays visible
+  board.style.transform = "none";
+  const hb = $("levelChip").getBoundingClientRect().bottom + 10, br = board.getBoundingClientRect();
+  const sheetTop = innerHeight - 18 - sheet.offsetHeight - 14, avail = sheetTop - hb;
+  const sc = Math.min(1, avail / br.height), top = hb + Math.max(0, (avail - br.height * sc) / 2);
+  return `translateY(${(top - br.top).toFixed(1)}px) scale(${sc.toFixed(4)})`;
+}
+const STAR = "M50 6 L62 36 L94 38 L69 58 L77 90 L50 72 L23 90 L31 58 L6 38 L38 36 Z";
+let steps = [], anims = [], earned = 0, reward = 0, exitLatch = false;
+starsEl.innerHTML = [0, 1, 2].map(() => `<div class="star"><svg viewBox="0 0 100 100"><path d="${STAR}" fill="#d4bd98" transform="translate(0 3)"/><path d="${STAR}" fill="#c6ab82"/><g class="fill"><path d="${STAR}" fill="#e39a1c" transform="translate(0 4)"/><path d="${STAR}" fill="#ffc94a" stroke="#ffe08a" stroke-width="3" stroke-linejoin="round"/><path d="M38 36 L50 10 L56 26 Z" fill="rgba(255,255,255,.55)"/></g></svg></div>`).join("");
+const starFills = [...starsEl.querySelectorAll(".fill")];
+const actBtns = [...document.querySelectorAll(".actions .btn")];
+
+function starsFor(mv, p) { return mv <= p ? 3 : mv <= Math.ceil(p * 1.5) ? 2 : 1; }
+function anim(el, kf, opt) { const a = el.animate(kf, { fill: "forwards", ...opt }); anims.push(a); return a; }
+function startShow(now) {
+  earned = starsFor(moves, par); reward = 10 + earned * 10;
+  coins += reward; pendingCoins = reward; save(); // save immediately, display later
+  showing = true; settledShow = false; exitLatch = false; showT0 = now;
+  $("sheetSub").textContent = `در ${fa(moves)} حرکت · هدف ${fa(par)}`;
+  $("payNum").textContent = "+۰";
+  starFills.forEach(s => s.style.transform = "scale(0)");
+  actBtns.forEach(b => { b.style.transform = "scale(0)"; b.disabled = true; });
+  sheet.hidden = false; liftT = computeLift();
+  steps = [
+    { at: 280, run() { anim(board, [{ transform: "none" }, { transform: liftT }], { duration: 560, easing: "cubic-bezier(.22,.61,.36,1)" }); document.querySelector(".hint").style.opacity = 0; anim(sheet, [{ transform: "translate(-50%,130%)" }, { transform: "translate(-50%,0)" }], { duration: 520, easing: "cubic-bezier(.22,.61,.36,1)" }); },
+      settle() { board.style.transform = liftT; document.querySelector(".hint").style.opacity = 0; sheet.style.transform = "translate(-50%,0)"; } },
+    ...[0, 1, 2].filter(i => i < earned).map(i => ({ at: 780 + i * 250, run() {
+        anim(starFills[i], [{ transform: "scale(0) rotate(-40deg)" }, { transform: "scale(1) rotate(0deg)" }], { duration: 380, easing: "cubic-bezier(.34,1.56,.64,1)" });
+        setTimeout(() => { if (!showing) return; sfx.star(i); const p = elCenter(starFills[i].closest(".star")); burst(p.x, p.y, "#ffe08a", 10 + i * 3, 44 + i * 8);
+          anim(sheet, [{ transform: "translate(-50%,0) scale(1)" }, { transform: `translate(-50%,0) scale(${1 + 0.012 * (i + 1)})` }, { transform: "translate(-50%,0) scale(1)" }], { duration: 220, easing: "ease-out" }); }, 200);
+      }, settle() { starFills[i].style.transform = "scale(1)"; } })),
+    { at: 1240, run() {
+        const t0 = performance.now(); let last = -1;
+        const tick = () => { if (!showing) return; const p = clamp01((performance.now() - t0) / 480), v = Math.round(reward * eOC(p));
+          if (v !== last) { $("payNum").textContent = "+" + fa(v); if (v % 5 === 0) sfx.tick(); last = v; }
+          if (p < 1) requestAnimationFrame(tick); else pop($("payrow"), 1.12); };
+        tick();
+      }, settle() { $("payNum").textContent = "+" + fa(reward); } },
+    { at: 1640, run() { actBtns.forEach(b => anim(b, [{ transform: "scale(0)" }, { transform: "scale(1)" }], { duration: 360, easing: "cubic-bezier(.34,1.56,.64,1)" })); setTimeout(() => actBtns.forEach(b => b.disabled = false), 120); },
+      settle() { actBtns.forEach(b => { b.style.transform = "scale(1)"; b.disabled = false; }); } },
+    { at: 1780, run() { fly("coin", elCenter($("payrow").querySelector("svg")), $("coinChip"), null, () => { pendingCoins = 0; renderCoins(); pop($("coinChip")); sfx.coin(); }); },
+      settle() { pendingCoins = 0; renderCoins(); } },
+  ];
+  if (reduce()) { skipShow(); return; }
+  steps.forEach(s => s.timer = setTimeout(() => { s.ran = true; s.run(); }, s.at));
+  live.textContent = `باغ سیراب شد. ${fa(earned)} ستاره، ${fa(reward)} سکه.`;
+}
+function skipShow() {
+  steps.forEach(s => { clearTimeout(s.timer); s.settle(); });
+  anims.forEach(a => { try { a.finish(); } catch (e) {} });
+  flights.forEach(f => { if (f.kind === "coin") f.done = true; });
+  settledShow = true;
+}
+document.addEventListener("pointerdown", e => {
+  if (showing && !settledShow && performance.now() - showT0 > 300 && !e.target.closest(".btn")) skipShow();
+}, true);
+function leaveShow(nextLevel) {
+  if (exitLatch) return; exitLatch = true;
+  if (!settledShow) skipShow();
+  const r = reduce(), now = performance.now();
+  board.style.transform = liftT; sheet.style.transform = "translate(-50%,0)";
+  anims.forEach(a => a.cancel()); anims = [];
+  const hint = document.querySelector(".hint");
+  const done = () => { sheet.hidden = true; sheet.style.transform = "translate(-50%,130%)"; board.style.transform = "none"; hint.style.opacity = 1; showing = false; settledShow = false; };
+  if (r) done(); else {
+    sheet.animate([{ transform: "translate(-50%,0)" }, { transform: "translate(-50%,130%)" }], { duration: 260, easing: "cubic-bezier(.55,.06,.68,.19)", fill: "forwards" }); // drops away opaque
+    board.animate([{ transform: liftT }, { transform: "none" }], { duration: 300, easing: "cubic-bezier(.55,.06,.68,.19)", fill: "forwards" });
+    setTimeout(done, 262);
+  }
+  // board exit, then the next board overlaps it by 40 ms
+  let exitEnd = 0;
+  if (!r) tiles.forEach(t => { const d = Math.min(t.depthSol * 30, 240); t.appear = tw(1, 0, now + d, 200, eIC); exitEnd = Math.max(exitEnd, d + 200); });
+  setTimeout(() => { if (nextLevel) level++; save(); loadLevel(); }, r ? 0 : Math.max(0, exitEnd - 40));
+}
+$("btnNext").addEventListener("click", () => leaveShow(true));
+$("btnReplay").addEventListener("click", () => leaveShow(false));
+
+// ---------- controls ----------
+let toastTimer = 0;
+function toast(msg) {
+  const el = $("toast"); el.textContent = msg; el.hidden = false; clearTimeout(toastTimer);
+  if (!reduce()) el.animate([{ transform: "translate(-50%,20px) scale(.94)" }, { transform: "translate(-50%,0) scale(1)" }], { duration: 260, easing: "cubic-bezier(.34,1.56,.64,1)" });
+  toastTimer = setTimeout(() => { if (reduce()) { el.hidden = true; return; } const a = el.animate([{ transform: "translate(-50%,0)" }, { transform: "translate(-50%,90px)" }], { duration: 220, easing: "cubic-bezier(.55,.06,.68,.19)" }); a.onfinish = () => el.hidden = true; }, 1600);
+}
+$("btnRestart").addEventListener("click", () => {
+  if (showing || won) return; ac(); lastInput = performance.now();
+  tiles.forEach(t => { t.turns = Math.ceil(t.turns / 4) * 4; });
+  moves = 0; renderMoves(); applyWater(performance.now());
+});
+$("btnSound").addEventListener("click", () => {
+  soundOn = !soundOn; $("soundWaves").setAttribute("visibility", soundOn ? "visible" : "hidden"); $("soundX").setAttribute("visibility", soundOn ? "hidden" : "visible");
+  $("btnSound").setAttribute("aria-label", soundOn ? "صدا: روشن" : "صدا: خاموش"); toast(soundOn ? "صدا: روشن" : "صدا: خاموش"); save();
+});
+const MOTION_LABEL = { auto: "حرکت: خودکار", on: "حرکت: روشن", off: "حرکت: خاموش" };
+function applyMotionUi() {
+  document.documentElement.classList.toggle("motion-off", reduce());
+  $("motionWave").setAttribute("visibility", motionMode === "off" ? "hidden" : "visible"); $("motionFlat").setAttribute("visibility", motionMode === "off" ? "visible" : "hidden");
+  $("btnMotion").setAttribute("aria-label", MOTION_LABEL[motionMode]);
+}
+$("btnMotion").addEventListener("click", () => {
+  motionMode = { auto: "on", on: "off", off: "auto" }[motionMode]; applyMotionUi(); toast(MOTION_LABEL[motionMode]); save();
+});
+mq.addEventListener?.("change", applyMotionUi);
+
+// ---------- level lifecycle ----------
+function save() { store.set({ level, coins, soundOn, motionMode }); }
+function loadLevel() {
+  generate(level);
+  moves = 0; won = false; showPending = false; shownBlooms = 0; run = 0; nudge = null;
+  flights = []; parts = [];
+  tiles.forEach(t => { t.ang = 0; t.vel = 0; });
+  $("levelChip").textContent = `مرحله‌ی ${fa(level)}`; $("bloomTot").textContent = fa(flowers.length);
+  renderBlooms(); renderMoves(); renderCoins();
+  const now = performance.now(), r = reduce();
+  // tiles arrive outward from the spring
+  tiles.forEach(t => { t.appear = r ? tw(1, 1, 0, 0, eOC) : tw(0, 1, now + Math.min(t.depthSol * 45, 520), 420, eOB); });
+  applyWater(now + (r ? 0 : 380));
+  // flowers already watered at start count without a show
+  lastInput = now;
+}
+
+// ---------- loop ----------
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(0.033, (now - lastT) / 1000); lastT = now;
+  const r = reduce();
+  for (const t of tiles) { // spring: retargets from the current angle and velocity
+    if (r) { t.ang = t.turns; t.vel = 0; continue; }
+    const k = 420, d = 2 * Math.sqrt(k) * 0.62, steps = 4, h = dt / steps;
+    for (let i = 0; i < steps; i++) { const a = -k * (t.ang - t.turns) - d * t.vel; t.vel += a * h; t.ang += t.vel * h; }
+  }
+  updateFlowers(now);
+  if (!won && !showing && now - lastInput > 5000 && !nudge) {
+    const wrong = tiles.filter(t => !t.isSrc && cur(t) !== t.sol);
+    nudge = wrong.sort((a, b) => a.depthSol - b.depthSol)[0] || null;
+  }
+  drawSky(now); drawBoard(now); drawFx(now);
+  requestAnimationFrame(frame);
+}
+
+// ---------- boot ----------
+const saved = store.get();
+if (saved) { level = saved.level || 1; coins = saved.coins || 0; soundOn = saved.soundOn !== false; motionMode = saved.motionMode || "auto"; }
+if (!soundOn) { $("soundWaves").setAttribute("visibility", "hidden"); $("soundX").setAttribute("visibility", "visible"); }
+applyMotionUi();
+document.querySelectorAll(".enter").forEach(el => el.addEventListener("animationend", () => el.classList.remove("enter"), { once: true }));
+layout(); loadLevel();
+addEventListener("resize", () => { layout(); });
+document.fonts?.ready?.then(() => layout());
+window.__garden = { get tiles() { return tiles; }, rotate: t => rotate(t), solveAll() { tiles.forEach(t => { for (let k = 0; k < 4; k++) if (rotm(t.base, t.turns + k) === t.sol) { t.turns += k; break; } }); moves = par; renderMoves(); applyWater(performance.now()); won = true; showPending = true; }, get par() { return par; } };
+requestAnimationFrame(frame);
+})();
+</script>
